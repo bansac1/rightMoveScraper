@@ -8,15 +8,14 @@ import json
 import pandas as pd
 import time
 
+url = 'https://www.rightmove.co.uk/property-to-rent/find.html?locationIdentifier=USERDEFINEDAREA%5E%7B%22id%22%3A9827833%7D&maxBedrooms=2&minBedrooms=2&maxPrice=2000&minPrice=2000&propertyTypes=&includeLetAgreed=false&mustHave=&dontShow=&furnishTypes=&keywords='
+
 # Set up the ChromeDriver path
 driver_path = "/Users/sachabanks/Downloads/chromedriver-mac-arm64/chromedriver"
 service = Service(driver_path)
 
 # Create a WebDriver instance
 driver = webdriver.Chrome(service=service)
-
-# Define the URL for the search results page
-url = 'https://www.rightmove.co.uk/property-to-rent/find.html?locationIdentifier=USERDEFINEDAREA%5E%7B%22id%22%3A9827833%7D&maxBedrooms=2&minBedrooms=2&maxPrice=2000&minPrice=2000&propertyTypes=&includeLetAgreed=false&mustHave=&dontShow=&furnishTypes=&keywords='
 
 # Open the webpage
 driver.get(url)
@@ -61,16 +60,10 @@ def extract_properties(driver):
     # Extract the JSON data from the script tag
     json_text = script_tag.string.split('window.jsonModel = ')[1].rsplit(';', 1)[0]
     
-    # Clean the JSON string
-    json_text = json_text.replace('&quot;', '"').replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>')
-    
     # Debugging print
     print("Extracted JSON text length:", len(json_text))
     
-    # Ensure the JSON string is complete by adding closing braces if necessary
-    if not json_text.endswith('}'):
-        json_text += '}'
-    
+    # Ensure the JSON string is properly closed
     try:
         data = json.loads(json_text)
     except json.JSONDecodeError as e:
@@ -92,10 +85,13 @@ all_properties.extend(extract_properties(driver))
 # Function to check if there are more pages
 def has_next_page(driver):
     try:
-        # Check if the next button is enabled
+        # Locate the next button using a more specific selector
         next_button = driver.find_element(By.CSS_SELECTOR, 'button.pagination-button.pagination-direction.pagination-direction--next')
-        return not next_button.get_attribute('disabled')
-    except:
+        is_enabled = next_button.is_enabled()
+        print(f"Next button enabled: {is_enabled}")
+        return is_enabled
+    except Exception as e:
+        print(f"Error checking next button: {e}")
         return False
 
 # Loop through the remaining pages
@@ -117,7 +113,7 @@ while has_next_page(driver):
         time.sleep(2)
     except Exception as e:
         # If there's an error, print it and break out of the loop
-        print("An error occurred:", e)
+        print("An error occurred while navigating pages:", e)
         break
 
 # Close the Selenium driver
@@ -162,4 +158,4 @@ properties_df = pd.DataFrame({
 print(properties_df.head())
 
 # Save the data to a CSV file
-properties_df.to_csv('rightmove_properties.csv', index=False)
+#properties_df.to_csv('rightmove_properties.csv', index=False)
